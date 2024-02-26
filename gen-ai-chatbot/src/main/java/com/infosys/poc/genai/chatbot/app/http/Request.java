@@ -1,4 +1,4 @@
-package com.infosys.poc.genai.chatbot.app.request;
+package com.infosys.poc.genai.chatbot.app.http;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,8 +9,8 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChatGPTRequest {
+public class Request {
 
     private String model;
-    private List<ChatGPTRequestMessage> messages;
+    private List<Message> messages;
 }

@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ message })
             });
             const data = await response.json();
-            return data.response;
+            return data.message;
         } catch (error) {
             console.error('Error sending message:', error);
             return 'An error occurred while processing your message.';

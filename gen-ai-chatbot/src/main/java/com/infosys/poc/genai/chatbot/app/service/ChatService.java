@@ -1,9 +1,9 @@
 package com.infosys.poc.genai.chatbot.app.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infosys.poc.genai.chatbot.app.request.ChatGPTRequest;
-import com.infosys.poc.genai.chatbot.app.request.ChatGPTRequestMessage;
+import com.infosys.poc.genai.chatbot.app.http.Request;
+import com.infosys.poc.genai.chatbot.app.http.Response;
+import com.infosys.poc.genai.chatbot.app.http.Message;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,12 +21,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ChatService {
 
-    private static final String CHAT_GPT_MODEL = "gpt-3.5-turbo-0125";
-    //private static final String CHAT_GPT_MODEL = "gpt-3.5-turbo";
-    @Value("${chatgpt.apiKey}") // You can use application.yml to store the API key
+    @Value("${app.openai.model}")
+    private String openaiModel;
+    @Value("${app.openai.apiKey}")
     private String apiKey;
 
-    private final String chatGptEndpoint = "https://api.openai.com/v1/completions"; // Change this if needed
+    @Value("${app.openai.url}")
+    private String openaiUrl;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -34,37 +35,38 @@ public class ChatService {
     private ObjectMapper objectMapper;
 
     public String sendMessage(String message) {
-        log.debug("ChatService::sendMessage START");
+        log.info("ChatService::sendMessage START");
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + apiKey);
 
-            ChatGPTRequest request = createRequest(List.of(message));
+            Request request = createRequest(List.of(message));
             String requestBody = objectMapper.writeValueAsString(request);
             log.info("Request created for openAi : {}", requestBody);
 
             HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
-            String response = restTemplate.exchange(chatGptEndpoint, HttpMethod.POST, entity, String.class).getBody();
-            log.debug("open ai raw response : {}", response);
+            String responseRaw = restTemplate.exchange(openaiUrl, HttpMethod.POST, entity, String.class).getBody();
+            log.info("open ai raw response : {}", responseRaw);
 
-            JsonNode jsonResponse = objectMapper.readTree(response);
-            return jsonResponse.get("choices").get(0).get("text").asText();
+            Response response = objectMapper.readValue(responseRaw, Response.class);
+
+            log.info("Object response : {}", response);
+
+            return (null != response) ? response.getChoices().get(0).getMessage().getContent() : "null";
         } catch (Exception e) {
             log.error("Exception : {}", e.getMessage());
             return "An error occurred while processing your message.";
         } finally {
-            log.debug("ChatService::sendMessage END");
+            log.info("ChatService::sendMessage END");
         }
     }
 
-    private ChatGPTRequest createRequest(List<String> message) {
-        ChatGPTRequest request = new ChatGPTRequest();
-        request.setModel(CHAT_GPT_MODEL);
+    private Request createRequest(List<String> message) {
+        Request request = new Request();
+        request.setModel(openaiModel);
 
-        request.setMessages(message.stream()
-                .map(m -> new ChatGPTRequestMessage("user", m))
-                .collect(Collectors.toList()));
+        request.setMessages(message.stream().map(m -> new Message("user", m)).collect(Collectors.toList()));
 
         return request;
     }
